@@ -210,6 +210,13 @@ def parse_args():
         action="store_true",
         help="Don't run generation but benchmark groundtruth (useful for debugging)",
     )
+    
+    parser.add_argument(
+        "--watermarking_scheme",
+        type=str,
+        default=None,
+        help="Watermarking scheme to use for the model",
+    )
     return parser.parse_args()
 
 
