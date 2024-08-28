@@ -75,6 +75,7 @@ def parse_args():
     )
     parser.add_argument(
         "--tasks",
+        "--list",
         default=None,
         choices=MultiChoice(ALL_TASKS),
         help=f"Evaluation tasks from {ALL_TASKS}",
