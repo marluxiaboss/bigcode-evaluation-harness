@@ -28,11 +28,12 @@ Once you have read this disclaimer and taken appropriate precautions, set the ar
 """
 
 class Evaluator:
-    def __init__(self, accelerator, model, tokenizer, args):
+    def __init__(self, accelerator, model, tokenizer, args, watermarking_scheme=None):
         self.accelerator = accelerator
         self.model = model
         self.tokenizer = tokenizer
         self.args = args
+        self.watermarking_scheme = watermarking_scheme
 
         # setup arguments
         self.metric_output_path = args.metric_output_path
@@ -72,6 +73,7 @@ class Evaluator:
             self.accelerator,
             self.model,
             self.tokenizer,
+            watermarking_scheme=self.watermarking_scheme,
             n_tasks=n_tasks,
             args=self.args,
             curr_sample_idx=curr_sample_idx,  # curr_sample_idx will added to limit_start to fix indexing

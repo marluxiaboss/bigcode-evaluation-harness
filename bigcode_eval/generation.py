@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from accelerate.utils import set_seed
 from torch.utils.data.dataloader import DataLoader
-from transformers import StoppingCriteria, StoppingCriteriaList
+from transformers import StoppingCriteria, StoppingCriteriaList, LogitsProcessorList
 
 from bigcode_eval.utils import TokenizedDataset, complete_code
 
@@ -51,6 +51,7 @@ def parallel_generations(
         save_every_k_tasks: int = -1,
         intermediate_generations: Optional[List[Optional[List[Optional[str]]]]] = None,
         intermediate_save_generations_path: Optional[str] = None,
+        watermarking_scheme = None,
 ):
     if args.load_generations_path:
         # load generated code
@@ -65,12 +66,14 @@ def parallel_generations(
     set_seed(args.seed, device_specific=True)
 
     # Setup generation settings
+
     gen_kwargs = {
         "do_sample": args.do_sample,
         "temperature": args.temperature,
         "top_p": args.top_p,
         "top_k": args.top_k,
         "max_length": args.max_length_generation,
+        "logits_processor": LogitsProcessorList([watermarking_scheme.logits_processor])
     }
     stopping_criteria = []
     # The input_length / start_length set to 0 for now will be adjusted later

@@ -18,6 +18,9 @@ from bigcode_eval.arguments import EvalArguments
 from bigcode_eval.evaluator import Evaluator
 from bigcode_eval.tasks import ALL_TASKS
 
+from watermark.auto_watermark import AutoWatermark
+from watermark.utils import ModelConfig, load_config_file
+
 
 class MultiChoice:
     def __init__(self, choices):
@@ -366,6 +369,19 @@ def main():
             tokenizer.bos_token = "<s>"
             tokenizer.bos_token_id = 1
             print("Changing bos_token to <s>")
+            
+            
+        # watermarking stuff
+        watermarking_scheme = args.watermarking_scheme
+
+        algorithm_config_file = f"watermark/watermark_config/{watermarking_scheme}.json"
+        config_dict = load_config_file(algorithm_config_file)
+        watermarking_scheme_name = config_dict["algorithm_name"]
+        print(f"watermarking_scheme_name: {watermarking_scheme_name}")
+        algorithm_config = config_dict
+
+        watermarking_scheme = AutoWatermark.load(watermarking_scheme_name,
+                algorithm_config=algorithm_config)
 
         evaluator = Evaluator(accelerator, model, tokenizer, args)
 
