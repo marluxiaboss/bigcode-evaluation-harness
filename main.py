@@ -373,17 +373,25 @@ def main():
             
         # watermarking stuff
         watermarking_scheme = args.watermarking_scheme
+        
+        if watermarking_scheme is not None:
 
-        algorithm_config_file = f"watermark/watermark_config/{watermarking_scheme}.json"
-        config_dict = load_config_file(algorithm_config_file)
-        watermarking_scheme_name = config_dict["algorithm_name"]
-        print(f"watermarking_scheme_name: {watermarking_scheme_name}")
-        algorithm_config = config_dict
+            algorithm_config_file = f"watermark/watermark_config/{watermarking_scheme}.json"
+            config_dict = load_config_file(algorithm_config_file)
+            watermarking_scheme_name = config_dict["algorithm_name"]
+            print(f"watermarking_scheme_name: {watermarking_scheme_name}")
+            algorithm_config = config_dict
 
-        watermarking_scheme = AutoWatermark.load(watermarking_scheme_name,
-                algorithm_config=algorithm_config)
 
-        evaluator = Evaluator(accelerator, model, tokenizer, args)
+            gen_config = ModelConfig(tokenizer)
+                
+            watermarking_scheme = AutoWatermark.load(watermarking_scheme_name,
+                    algorithm_config=algorithm_config,
+                    gen_model=model,
+                    model_config=gen_config
+            )
+
+        evaluator = Evaluator(accelerator, model, tokenizer, args, watermarking_scheme)
 
         if (
             args.load_generations_intermediate_paths
