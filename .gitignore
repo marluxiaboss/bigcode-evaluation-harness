@@ -168,3 +168,5 @@ evaluation*.json
 generations*.json
 
 playground/
+bigcode_eval/tasks/ds/
+evaluation_results/eval_n_samples_50/
