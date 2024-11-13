@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from accelerate.utils import set_seed
 from torch.utils.data.dataloader import DataLoader
-from transformers import StoppingCriteria, StoppingCriteriaList, LogitsProcessorList
+from transformers import StoppingCriteria, StoppingCriteriaList, LogitsProcessorList, SynthIDTextWatermarkingConfig
 
 from bigcode_eval.utils import TokenizedDataset, complete_code
 
@@ -67,10 +67,20 @@ def parallel_generations(
 
     # Setup generation settings
 
+
     if watermarking_scheme is None:
         logits_processor_list = None
+        watermarking_config = None
     else:
-        logits_processor_list = LogitsProcessorList([watermarking_scheme.logits_processor])
+
+        # special case for SynthID because we need to use the Transformers (HuggingFace) implementation
+        if isinstance(watermarking_scheme, SynthIDTextWatermarkingConfig):
+            logits_processor_list = None
+            watermarking_config = watermarking_scheme
+        else:
+            watermarking_config = None
+            logits_processor_list = LogitsProcessorList([watermarking_scheme.logits_processor])
+
     gen_kwargs = {
         "do_sample": args.do_sample,
         "temperature": args.temperature,
@@ -78,7 +88,9 @@ def parallel_generations(
         "top_k": args.top_k,
         "max_length": args.max_length_generation,
         "logits_processor": logits_processor_list,
+        "watermarking_config": watermarking_config,
     }
+    
     stopping_criteria = []
     # The input_length / start_length set to 0 for now will be adjusted later
     # Check if the task has a custom check_fn method for the stopping criteria

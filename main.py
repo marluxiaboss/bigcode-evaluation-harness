@@ -12,6 +12,7 @@ from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
     HfArgumentParser,
+    SynthIDTextWatermarkingConfig
 )
 
 from bigcode_eval.arguments import EvalArguments
@@ -375,21 +376,32 @@ def main():
         watermarking_scheme = args.watermarking_scheme
         
         if watermarking_scheme is not None:
+            
+            if watermarking_scheme == "SynthID":
+                watermarking_config = SynthIDTextWatermarkingConfig(
+                    keys=[654, 400, 836, 123, 340, 443, 597, 160, 57, ...],
+                    ngram_len=5,
+                )
 
-            algorithm_config_file = f"watermark/watermark_config/{watermarking_scheme}.json"
-            config_dict = load_config_file(algorithm_config_file)
-            watermarking_scheme_name = config_dict["algorithm_name"]
-            print(f"watermarking_scheme_name: {watermarking_scheme_name}")
-            algorithm_config = config_dict
+                for k, v in algorithm_config.items():
+                    setattr(watermarking_config, k, v)
 
+                watermarking_scheme = watermarking_config
+            else:
 
-            gen_config = ModelConfig(tokenizer)
-                
-            watermarking_scheme = AutoWatermark.load(watermarking_scheme_name,
-                    algorithm_config=algorithm_config,
-                    gen_model=model,
-                    model_config=gen_config
-            )
+                algorithm_config_file = f"watermark/watermark_config/{watermarking_scheme}.json"
+                config_dict = load_config_file(algorithm_config_file)
+                watermarking_scheme_name = config_dict["algorithm_name"]
+                print(f"watermarking_scheme_name: {watermarking_scheme_name}")
+                algorithm_config = config_dict
+
+                gen_config = ModelConfig(tokenizer)
+                    
+                watermarking_scheme = AutoWatermark.load(watermarking_scheme_name,
+                        algorithm_config=algorithm_config,
+                        gen_model=model,
+                        model_config=gen_config
+                )
 
         evaluator = Evaluator(accelerator, model, tokenizer, args, watermarking_scheme)
 
