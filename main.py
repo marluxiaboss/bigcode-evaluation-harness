@@ -376,6 +376,12 @@ def main():
         watermarking_scheme = args.watermarking_scheme
         
         if watermarking_scheme is not None:
+
+            algorithm_config_file = f"watermark/watermark_config/{watermarking_scheme}.json"
+            config_dict = load_config_file(algorithm_config_file)
+            watermarking_scheme_name = config_dict["algorithm_name"]
+            print(f"watermarking_scheme_name: {watermarking_scheme_name}")
+            algorithm_config = config_dict
             
             if watermarking_scheme == "SynthID":
                 watermarking_config = SynthIDTextWatermarkingConfig(
@@ -388,13 +394,6 @@ def main():
 
                 watermarking_scheme = watermarking_config
             else:
-
-                algorithm_config_file = f"watermark/watermark_config/{watermarking_scheme}.json"
-                config_dict = load_config_file(algorithm_config_file)
-                watermarking_scheme_name = config_dict["algorithm_name"]
-                print(f"watermarking_scheme_name: {watermarking_scheme_name}")
-                algorithm_config = config_dict
-
                 gen_config = ModelConfig(tokenizer)
                     
                 watermarking_scheme = AutoWatermark.load(watermarking_scheme_name,
