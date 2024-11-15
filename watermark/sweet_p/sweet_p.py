@@ -22,6 +22,8 @@ from math import sqrt
 
 from functools import partial
 from ..base import BaseWatermark
+from ...utils.utils import load_config_file
+from ...utils.configs import ModelConfig
 from transformers import LogitsProcessor, LogitsProcessorList
 
 
@@ -29,7 +31,7 @@ from transformers import LogitsProcessor, LogitsProcessorList
 class SWEET_PConfig:
     """Config class for SWEET algorithm, load config file and initialize parameters."""
 
-    def __init__(self, algorithm_config: dict, gen_model, model_config, *args, **kwargs) -> None:
+    def __init__(self, algorithm_config: dict, gen_model, model_config: ModelConfig, *args, **kwargs) -> None:
         """
             Initialize the SWEET configuration.
 
@@ -49,6 +51,7 @@ class SWEET_PConfig:
         self.cut_off_method = config_dict['cut_off_method']
         self.prob_ratio = config_dict['prob_ratio']
         self.top_p = config_dict['top_p']
+        self.use_entropy_model = config_dict['use_entropy_model']
         
         self.generation_model = gen_model
         self.generation_tokenizer = model_config.tokenizer
@@ -314,6 +317,26 @@ class SWEET_PLogitsProcessor(LogitsProcessor):
             prob_threshold = torch.tensor(prob_ratio * highest_prob).to(self.config.device).reshape(-1, 1)
             prob_mask = torch.where(raw_probs > prob_threshold, True, False)
 
+        elif cut_off_method == "top_p":
+            sorted_probs, sorted_indices = torch.sort(raw_probs, descending=True, dim=-1)
+            cum_prob = torch.cumsum(sorted_probs, dim=-1)
+            cum_sum_mask = (cum_prob < top_p).to(self.config.device)
+
+            # Initialize a list to store top_p indices
+            top_p_indices = []
+
+            # Collect top_p indices
+            for i in range(cum_sum_mask.shape[0]):
+                top_p_indices.append(sorted_indices[i][cum_sum_mask[i]])
+
+            # Create a probability mask
+            prob_mask = torch.zeros_like(raw_probs)
+
+            # Set the top_p indices to True
+            for i, indices in enumerate(top_p_indices):
+                prob_mask[i, indices] = 1
+            prob_mask = prob_mask.bool()
+
         else:
             raise ValueError("Cut off method not recognized")
         
@@ -332,10 +355,17 @@ class SWEET_PLogitsProcessor(LogitsProcessor):
 
         green_tokens_mask = self._calc_greenlist_mask(scores=scores, greenlist_token_ids=batched_greenlist_ids)
 
+        use_entropy_model = self.config.use_entropy_model
+
         # get entropy
         raw_probs = torch.softmax(scores, dim=-1)  
         ent = -torch.where(raw_probs > 0, raw_probs * raw_probs.log(), raw_probs.new([0.0])).sum(dim=-1)
-        entropy_mask = (ent > self.config.entropy_threshold).view(-1, 1)
+        
+        if use_entropy_model:
+            entropy_mask = (ent > self.config.entropy_threshold).view(-1, 1)
+        else:
+            entropy_mask = torch.ones_like(ent).view(-1, 1).bool()
+        
         probability_mask = self.find_probability_mask(raw_probs)
         
         green_tokens_mask = green_tokens_mask * entropy_mask * probability_mask
@@ -347,7 +377,7 @@ class SWEET_PLogitsProcessor(LogitsProcessor):
 class SWEET_P(BaseWatermark):
     """Top-level class for SWEET algorithm."""
 
-    def __init__(self, algorithm_config: dict, gen_model, transformers_config, *args, **kwargs) -> None:
+    def __init__(self, algorithm_config: dict, gen_model, transformers_config: ModelConfig, *args, **kwargs) -> None:
         """
             Initialize the SWEET algorithm.
 
@@ -399,12 +429,17 @@ class SWEET_P(BaseWatermark):
     def detect_watermark(self, text: str, return_dict: bool = True, *args, **kwargs):
         """Detect watermark in the text."""
 
+        use_entropy_model = self.config.use_entropy_model
+
         # encode text
         encoded_text = self.config.generation_tokenizer(text, return_tensors="pt", add_special_tokens=False)["input_ids"][0].to(self.config.device)
 
         # calculate entropy
-        entropy_list = self.utils.calculate_entropy(self.config.generation_model, encoded_text)
-        
+        if use_entropy_model:
+            entropy_list = self.utils.calculate_entropy(self.config.generation_model, encoded_text)
+        else:
+            entropy_list = [10000.0 for _ in range(len(encoded_text))]
+
         # compute z_score
         z_score, _, _ = self.utils.score_sequence(encoded_text, entropy_list)
 
