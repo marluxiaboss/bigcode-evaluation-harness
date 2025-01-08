@@ -170,3 +170,7 @@ generations*.json
 playground/
 bigcode_eval/tasks/ds/
 evaluation_results/eval_n_samples_50/
+
+# result files
+code_evaluation_results/
+evaluation_results_old/
