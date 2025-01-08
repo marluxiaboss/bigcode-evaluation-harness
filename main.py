@@ -383,7 +383,7 @@ def main():
             print(f"watermarking_scheme_name: {watermarking_scheme_name}")
             algorithm_config = config_dict
             
-            if watermarking_scheme == "SynthID":
+            if watermarking_scheme_name == "SynthID":
                 watermarking_config = SynthIDTextWatermarkingConfig(
                     keys=[654, 400, 836, 123, 340, 443, 597, 160, 57, ...],
                     ngram_len=5,
